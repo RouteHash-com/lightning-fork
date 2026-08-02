@@ -709,9 +709,10 @@ func (r *rpcServer) addDeps(ctx context.Context, s *server,
 	graph := s.v1Graph
 
 	routerBackend := &routerrpc.RouterBackend{
-		SelfNode: selfNode.PubKeyBytes,
-		SelfHop:  &selfHopProcessor{s: s},
-		Clock:    clock.NewDefaultClock(),
+		SelfNode:          selfNode.PubKeyBytes,
+		SelfHop:           &selfHopProcessor{s: s},
+		TrampolineRouting: s.cfg.ProtocolOptions.Trampoline(),
+		Clock:             clock.NewDefaultClock(),
 		FetchChannelCapacity: func(chanID uint64) (btcutil.Amount,
 			error) {
 
@@ -750,6 +751,26 @@ func (r *rpcServer) addDeps(ctx context.Context, s *server,
 			exists, err := s.v1Graph.HasNode(ctx, nodePub)
 
 			return exists, err
+		},
+		FetchNodeFeatures: func(nodePub route.Vertex) (
+			*lnwire.FeatureVector, error) {
+
+			// Private peers may not have a node announcement in the
+			// graph. Prefer the live init feature vector when the
+			// requested node is directly connected.
+			peerKey, err := btcec.ParsePubKey(nodePub[:])
+			if err != nil {
+				return nil, err
+			}
+			remotePeer, err := s.FindPeer(peerKey)
+			if err == nil {
+				return remotePeer.RemoteFeatures(), nil
+			}
+
+			return s.v1Graph.FetchNodeFeatures(ctx, nodePub)
+		},
+		CurrentHeight: func() uint32 {
+			return uint32(s.blockbeatDispatcher.CurrentHeight())
 		},
 		FindRoute:              s.chanRouter.FindRoute,
 		MissionControl:         s.defaultMC,
