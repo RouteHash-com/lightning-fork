@@ -291,6 +291,10 @@ var allTestCases = []*lntest.TestCase{
 		TestFunc: testMultiHopPayments,
 	},
 	{
+		Name:     "trampoline routing",
+		TestFunc: testTrampolineRouting,
+	},
+	{
 		Name:     "estimate route fee",
 		TestFunc: testEstimateRouteFee,
 	},
