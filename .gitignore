@@ -96,3 +96,6 @@ coverage.txt
 # Local workspace pointing at the sibling btcd-blake2b checkout.
 go.work
 go.work.sum
+
+# P model-checker output generated when p check runs from the repository root.
+/PCheckerOutput/
