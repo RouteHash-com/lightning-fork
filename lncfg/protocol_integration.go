@@ -62,6 +62,11 @@ type ProtocolOptions struct {
 	// reorganisation could take them back after we paid out.
 	SplicePeerInputConfs uint32 `long:"splice-peer-input-confs" description:"the confirmations a splice the peer put coins into needs before HTLCs from the peer may spend them, failed back until then; the splice also locks deeper, up to this, the larger the coins the peer adds (0: neither)"`
 
+	// TrampolineRouting enables the experimental trampoline sender,
+	// receiver, relay, and feature advertisement. It stays off unless the
+	// operator passes the flag.
+	TrampolineRouting bool `long:"trampoline-routing" description:"enable experimental trampoline routing support"`
+
 	// ScriptEnforcedLease enables script enforced commitments for channel
 	// leases.
 	//
@@ -164,6 +169,11 @@ type ProtocolOptions struct {
 // channels.
 func (l *ProtocolOptions) Wumbo() bool {
 	return l.WumboChans
+}
+
+// Trampoline returns true when experimental trampoline routing is enabled.
+func (l *ProtocolOptions) Trampoline() bool {
+	return l.TrampolineRouting
 }
 
 // NoAnchorCommitments returns true if we have disabled support for the anchor
