@@ -17,6 +17,16 @@ import (
 	"golang.org/x/text/currency"
 )
 
+// Bolt12Features defines the set of BOLT 12 feature bits understood and
+// supported by our implementation: multi-path payments (MPP) and trampoline
+// routing, both the compulsory and optional variants.
+var Bolt12Features = map[lnwire.FeatureBit]string{
+	lnwire.MPPRequired:               "mpp",
+	lnwire.MPPOptional:               "mpp",
+	lnwire.TrampolineRoutingRequired: "trampoline_routing",
+	lnwire.TrampolineRoutingOptional: "trampoline_routing",
+}
+
 var (
 	// ErrOutOfRangeType is returned when a TLV type falls outside the
 	// allowed offer ranges (1-79 and 1000000000-1999999999).
