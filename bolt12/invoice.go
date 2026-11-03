@@ -298,6 +298,32 @@ func (inv *Invoice) Encode() ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
+// EncodeSigned serialises an invoice that is ready to leave the node. It
+// requires the signature the writer requirements make mandatory and verifies
+// it against invoice_node_id.
+//
+// Encode stays permissive about the signature because signing does not need
+// it: SignInvoice derives the Merkle root from the records, so a caller never
+// has to encode first. EncodeSigned is the entry point for bytes that reach a
+// peer, so it is where that signature is required. An invoice travels as raw
+// TLV inside an onion message, so that boundary is not a bech32 string.
+func (inv *Invoice) EncodeSigned() ([]byte, error) {
+	if !inv.Signature.IsSome() {
+		return nil, ErrMissingSignature
+	}
+
+	encoded, err := inv.Encode()
+	if err != nil {
+		return nil, err
+	}
+
+	if err := VerifyInvoice(inv); err != nil {
+		return nil, err
+	}
+
+	return encoded, nil
+}
+
 // DecodeInvoice deserializes an invoice from a TLV byte stream. Decoding is
 // permissive: callers that need spec compliance must run ValidateInvoiceRead.
 func DecodeInvoice(data []byte) (*Invoice, error) {
