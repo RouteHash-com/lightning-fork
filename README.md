@@ -36,6 +36,12 @@ The node mints BOLT 12 offers and serves and pays them over onion
 messages, which is how a mining pool that pays to offers pays a miner.
 Read [docs/bolt12-offers.md](docs/bolt12-offers.md).
 
+This branch, `autarki-trampoline`, adds the experimental trampoline sender
+and relay from the unmerged LND drafts. It stays off unless the operator
+passes `--protocol.trampoline-routing`. With the flag off, the node does
+not advertise trampoline and a send that asks for trampoline hops is
+refused. Blake2b splicing is unchanged and still has its own flag.
+
 To build it from source and run it next to a Bitcoin Knots node on your own
 Linux machine, follow [docs/native-ubuntu.md](docs/native-ubuntu.md)
 (`scripts/native-ubuntu.sh` does the steps for you). On StartOS and Umbrel,
