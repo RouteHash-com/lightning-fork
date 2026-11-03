@@ -25,6 +25,11 @@ const (
 	tagFieldSignature = "signature"
 )
 
+// InvoiceSignatureTag is the BIP-340 tag of an invoice signature. The
+// signature covers the tagged hash of the root that InvoiceSigningRoot returns.
+const InvoiceSignatureTag = signatureTagPrefix + tagMsgInvoice +
+	tagFieldSignature
+
 // ErrInvalidSignature is returned by VerifyInvoice and VerifyInvoiceRequest
 // when the BIP-340 Schnorr signature does not validate against the message's
 // Merkle root and signing key.
@@ -142,6 +147,18 @@ func SignInvoice(inv *Invoice, privKey *btcec.PrivateKey) ([64]byte, error) {
 	}
 
 	return signMessage(tagMsgInvoice, tagFieldSignature, root, privKey)
+}
+
+// InvoiceSigningRoot returns the Merkle root that the invoice signature
+// covers. A signer without the raw private key, such as a remote signer, signs
+// it under InvoiceSignatureTag. It returns an error for an invoice that breaks
+// the writer requirements.
+func InvoiceSigningRoot(inv *Invoice) ([32]byte, error) {
+	if err := ValidateInvoiceWrite(inv); err != nil {
+		return [32]byte{}, fmt.Errorf("validate invoice: %w", err)
+	}
+
+	return merkleRoot(signableTLVs(inv.AllRecords()))
 }
 
 // VerifyInvoice verifies the signature on an invoice using its invoice_node_id

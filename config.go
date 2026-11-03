@@ -1506,9 +1506,19 @@ func ValidateConfig(cfg Config, interceptor signal.Interceptor, fileParser,
 
 	switch cfg.Bitcoin.Node {
 	case btcdBackendName:
-		return nil, mkErr("bitcoin.node=btcd is not supported: this " +
-			"daemon follows the Bitcoin BLAKE2b chain, which only a " +
-			"Bitcoin Knots bitcoind backend can serve")
+		// A release build follows the BLAKE2b chain, which btcd cannot
+		// serve. The integration build is the exception already used
+		// for a SHA256d regtest: upstream's own tests mine those blocks
+		// with a btcd miner, and that build never opts into the unified
+		// signature hash. Mainnet and the public test networks stay
+		// refused.
+		if !(chainreg.AllowSHA256Regtest() &&
+			cfg.Bitcoin.IsLocalNetwork()) {
+
+			return nil, mkErr("bitcoin.node=btcd is not supported: this " +
+				"daemon follows the Bitcoin BLAKE2b chain, which only a " +
+				"Bitcoin Knots bitcoind backend can serve")
+		}
 	case bitcoindBackendName:
 		if cfg.Bitcoin.SimNet {
 			return nil, mkErr("bitcoind does not " +
