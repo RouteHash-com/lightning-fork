@@ -1216,18 +1216,23 @@ func (r *RouterBackend) extractIntentFromSendRequest(
 		}
 		var activeChain [32]byte
 		copy(activeChain[:], r.ActiveNetParams.GenesisHash[:])
-		// The public reader enforces the invoice's chain, signature,
-		// feature and expiry gates.
-		encodedInvoice, err := bolt12.EncodeInvoiceString(invoice)
-		if err != nil {
+		// This tree reads a raw invoice. The string form is not
+		// required. The same reader gates still apply: chain,
+		// signature, features, and expiry.
+		features := bolt12.InvoiceFeatureCatalogues{
+			Invoice: bolt12.Bolt12Features,
+			Blinded: bolt12.Bolt12Features,
+		}
+		if err := bolt12.ValidateInvoiceRead(
+			invoice, activeChain, features,
+		); err != nil {
 			return nil, fmt.Errorf(
 				"validate BOLT 12 invoice: %w", err,
 			)
 		}
-		invoice, err = bolt12.DecodeInvoiceString(
-			encodedInvoice, r.Clock.Now(), activeChain,
-		)
-		if err != nil {
+		if err := bolt12.ValidateInvoiceExpiry(
+			invoice, r.Clock.Now(),
+		); err != nil {
 			return nil, fmt.Errorf(
 				"validate BOLT 12 invoice: %w", err,
 			)
