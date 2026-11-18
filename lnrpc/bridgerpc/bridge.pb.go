@@ -1110,7 +1110,13 @@ type InfoResponse struct {
 	//payable to exactly this key.
 	Node string `protobuf:"bytes,2,opt,name=node,proto3" json:"node,omitempty"`
 	// One entry per enabled direction.
-	Directions    []*DirectionInfo `protobuf:"bytes,3,rep,name=directions,proto3" json:"directions,omitempty"`
+	Directions []*DirectionInfo `protobuf:"bytes,3,rep,name=directions,proto3" json:"directions,omitempty"`
+	//
+	//The SHA-256 Lightning node this bridge pays from, as pubkey@host:port,
+	//when that node advertises a public address. A wallet opens its own
+	//private channel to this name. Empty when that node has no public
+	//address. This is not a gRPC address and not a bridge code.
+	Sha256Peer    string `protobuf:"bytes,4,opt,name=sha256_peer,json=sha256Peer,proto3" json:"sha256_peer,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1164,6 +1170,13 @@ func (x *InfoResponse) GetDirections() []*DirectionInfo {
 		return x.Directions
 	}
 	return nil
+}
+
+func (x *InfoResponse) GetSha256Peer() string {
+	if x != nil {
+		return x.Sha256Peer
+	}
+	return ""
 }
 
 type SetRateRequest struct {
@@ -1359,13 +1372,15 @@ const file_bridgerpc_bridge_proto_rawDesc = "" +
 	"\vrate_set_at\x18\x06 \x01(\x03R\trateSetAt\x12\x16\n" +
 	"\x06spread\x18\a \x01(\x01R\x06spread\x12\x19\n" +
 	"\bmin_msat\x18\b \x01(\x04R\aminMsat\x12\x19\n" +
-	"\bmax_msat\x18\t \x01(\x04R\amaxMsat\"v\n" +
+	"\bmax_msat\x18\t \x01(\x04R\amaxMsat\"\x97\x01\n" +
 	"\fInfoResponse\x12\x18\n" +
 	"\aversion\x18\x01 \x01(\rR\aversion\x12\x12\n" +
 	"\x04node\x18\x02 \x01(\tR\x04node\x128\n" +
 	"\n" +
 	"directions\x18\x03 \x03(\v2\x18.bridgerpc.DirectionInfoR\n" +
-	"directions\"$\n" +
+	"directions\x12\x1f\n" +
+	"\vsha256_peer\x18\x04 \x01(\tR\n" +
+	"sha256Peer\"$\n" +
 	"\x0eSetRateRequest\x12\x12\n" +
 	"\x04rate\x18\x01 \x01(\x01R\x04rate\"E\n" +
 	"\x0fSetRateResponse\x12\x12\n" +

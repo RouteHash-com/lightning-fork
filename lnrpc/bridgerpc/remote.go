@@ -53,7 +53,10 @@ type Remote struct {
 	tipAt time.Time
 	key   string
 	keyAt time.Time
-	now   func() time.Time
+	// peerURI is the public Lightning name last chosen from GetInfo.
+	// Empty when that node advertised no public address. See PublicPeer.
+	peerURI string
+	now     func() time.Time
 }
 
 // NewRemote wraps a connection to the SHA256 node.
@@ -201,6 +204,7 @@ func (r *Remote) BlockHeight(ctx context.Context) (int32, error) {
 	if err != nil {
 		return 0, fmt.Errorf("reading the node's height: %w", err)
 	}
+	r.noteInfo(info)
 	if !info.GetSyncedToChain() {
 		// Refuse rather than return a height that is not the present
 		// one. Every margin decision is a comparison against this
@@ -367,7 +371,7 @@ func (r *Remote) NodeKey(ctx context.Context) (string, error) {
 		return "", fmt.Errorf("reading the SHA256 node's identity: %w",
 			err)
 	}
-	r.noteKey(info.GetIdentityPubkey())
+	r.noteInfo(info)
 
 	return info.GetIdentityPubkey(), nil
 }
@@ -395,6 +399,33 @@ func (r *Remote) IdentityKey(ctx context.Context) (string, error) {
 	}
 
 	return checkedKey(got)
+}
+
+// noteInfo keeps the identity and the public Lightning name a GetInfo gave.
+func (r *Remote) noteInfo(info *lnrpc.GetInfoResponse) {
+	if info == nil {
+		return
+	}
+	r.noteKey(info.GetIdentityPubkey())
+	key, err := checkedKey(info.GetIdentityPubkey())
+	if err != nil {
+		return
+	}
+	peer := choosePublicPeer(key, info.GetUris())
+	r.tipMu.Lock()
+	r.peerURI = peer
+	r.tipMu.Unlock()
+}
+
+// PublicPeer is the cached public Lightning name of the SHA256 node.
+//
+// Empty when GetInfo has not run, or when every advertised address is
+// private. Info reads this instead of calling GetInfo again.
+func (r *Remote) PublicPeer() string {
+	r.tipMu.Lock()
+	defer r.tipMu.Unlock()
+
+	return r.peerURI
 }
 
 // noteKey keeps an identity key a GetInfo gave, if it is one.
@@ -632,6 +663,7 @@ func (r *Remote) CheckChain(ctx context.Context, network,
 	if err != nil {
 		return fmt.Errorf("SHA256 node: %w", err)
 	}
+	r.noteInfo(info)
 
 	for _, bit := range node.BLAKE2bFeatureBits {
 		if _, ok := info.GetFeatures()[bit]; ok {
@@ -743,7 +775,7 @@ func (r *Remote) BestBlock(ctx context.Context) (BlockInfo, error) {
 	}
 	// A node that has fallen behind leaves no tip for routeHeight, which
 	// then asks the height and is refused, as before.
-	r.noteKey(info.GetIdentityPubkey())
+	r.noteInfo(info)
 	r.tipMu.Lock()
 	if out.SyncedToChain {
 		r.tip, r.tipAt = out.Height, r.now()

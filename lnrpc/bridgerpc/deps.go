@@ -164,6 +164,18 @@ type Deps struct {
 	// that cannot be checked is not used.
 	Blake2bActivation func(ctx context.Context) (height int32,
 		hash [32]byte, strict bool, err error)
+
+	// EnsureRecipientChannel opens one private channel from this node
+	// toward an enrolled wallet when a toBLAKE2b quote has no route.
+	//
+	// opening is true when a channel this node started is already
+	// confirming, or when this call started one. It is false when no
+	// channel was opened, and the quote keeps its ordinary answer. Nil
+	// opens nothing. A route search must not call it: route probes run
+	// before a quote exists, and opening there would lock coins for a
+	// payment nobody has agreed to.
+	EnsureRecipientChannel func(ctx context.Context, dest string,
+		dueMsat uint64) (opening bool)
 }
 
 // HoldInvoiceRequest is what the bridge asks the local node to create.

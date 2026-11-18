@@ -4905,6 +4905,10 @@ func (s *server) handleCustomMessage(peer [33]byte, msg *lnwire.Custom) error {
 	srvrLog.Debugf("Custom message received: peer=%x, type=%d",
 		peer, msg.Type)
 
+	if data, ok := noteInbound(msg); ok {
+		go s.openSameChainInbound(peer, data)
+	}
+
 	return s.customMessageServer.SendUpdate(&CustomMessage{
 		Peer: peer,
 		Msg:  msg,

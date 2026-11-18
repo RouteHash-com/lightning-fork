@@ -419,6 +419,14 @@ message InfoResponse {
 
     // One entry per enabled direction.
     repeated DirectionInfo directions = 3;
+
+    /*
+    The SHA-256 Lightning node this bridge pays from, as pubkey@host:port,
+    when that node advertises a public address. A wallet opens its own
+    private channel to this name. Empty when that node has no public
+    address. This is not a gRPC address and not a bridge code.
+    */
+    string sha256_peer = 4;
 }
 
 message SetRateRequest {

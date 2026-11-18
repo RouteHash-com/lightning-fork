@@ -24,6 +24,7 @@ import (
 	"github.com/paulscode/lightning-fork-bridge/store"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
 	"gopkg.in/macaroon-bakery.v2/bakery"
 )
@@ -746,6 +747,17 @@ func (s *Server) remoteNode() *Remote {
 	return s.remote
 }
 
+// sha256PublicPeer is the cached public Lightning name of the SHA256 node.
+// Empty when that node has not advertised one. This does not call GetInfo.
+func (s *Server) sha256PublicPeer() string {
+	remote := s.remoteNode()
+	if remote == nil {
+		return ""
+	}
+
+	return remote.PublicPeer()
+}
+
 // rebuild takes down the running bridge and starts it again through the
 // retry loop, if svc is still the one running: two callers that saw the same
 // service (two SetRate calls at once) rebuild it once, not into two bridges.
@@ -1093,6 +1105,14 @@ func (s *Server) Quote(ctx context.Context, req *QuoteRequest) (*QuoteResponse,
 			svc.drive(sd, dec.Hash)
 		}
 
+		// A toBLAKE2b quote with no route can open one channel toward
+		// an enrolled wallet. The route search itself does not open.
+		// Any other refusal is unchanged.
+		if openingRecipient(s, ctx, sd.name, dec, err) {
+			return nil, status.Error(codes.FailedPrecondition,
+				RecipientOpeningSentence)
+		}
+
 		// A refusal is the bridge declining to promise something, not
 		// a fault: too large, too small, not enough left on the paying
 		// side, or a chain it cannot currently measure. The caller
@@ -1113,6 +1133,27 @@ func (s *Server) Quote(ctx context.Context, req *QuoteRequest) (*QuoteResponse,
 		Direction:    sd.name,
 		ExpiresAt:    q.Expires.Unix(),
 	}, nil
+}
+
+// openingRecipient reports whether a toBLAKE2b quote with no route should
+// tell the payer that a channel toward that wallet is opening.
+//
+// The callback is nil on a build that has not wired one, and on every
+// direction other than toBLAKE2b. A route search does not come through here.
+func openingRecipient(s *Server, ctx context.Context, side string,
+	dec node.Decoded, err error) bool {
+
+	if s == nil || s.cfg == nil || s.cfg.Deps == nil || side != "toBLAKE2b" ||
+		quote.CodeOf(err) != quote.CodeNoRoute {
+
+		return false
+	}
+	open := s.cfg.Deps.EnsureRecipientChannel
+	if open == nil {
+		return false
+	}
+
+	return open(ctx, dec.Destination, dec.AmountMsat)
 }
 
 // LookupSwap reports what the bridge believes about a swap.
@@ -1407,8 +1448,9 @@ func (s *Server) Info(ctx context.Context, _ *InfoRequest) (*InfoResponse,
 	defer cancel()
 
 	resp := &InfoResponse{
-		Version: PayerAPIVersion,
-		Node:    s.local.NodeKey(),
+		Version:    PayerAPIVersion,
+		Node:       s.local.NodeKey(),
+		Sha256Peer: s.sha256PublicPeer(),
 	}
 	for _, sd := range svc.sides {
 		if sd.quoting() {

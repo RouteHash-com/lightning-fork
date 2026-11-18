@@ -118,6 +118,8 @@ func (s *server) bridgeDeps(
 		ChannelBalance: s.bridgeChannelBalance,
 
 		Blake2bActivation: s.bridgeBlake2bActivation,
+
+		EnsureRecipientChannel: s.ensureRecipientChannel,
 	}
 }
 
